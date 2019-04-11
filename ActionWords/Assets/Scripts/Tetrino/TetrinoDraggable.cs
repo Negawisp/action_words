@@ -42,6 +42,7 @@ public class TetrinoDraggable : AttachedDraggable
 
     protected void Awake()
     {
+        _tetrino = GetComponent<Tetrino>();
         _pool = FindObjectOfType<Pool<TetrinoDraggable>>();
         if (_pool == null)
         { Debug.LogError("Tetrino " + this.name + " started off not in a pool."); }
@@ -77,27 +78,38 @@ public class TetrinoDraggable : AttachedDraggable
 
     public void Construct(Tetrino.Type type, char[] letters, Thaum.Type[] thaums)
     {
+        bool[][] blueprint = new bool[2][];
+        blueprint[0] = new bool[2];
+        blueprint[1] = new bool[2];
+
         switch (type)
         {
             case Tetrino.Type.T1:
-                _tetrino = new Tetrino1(letters, thaums, this.transform);
+                blueprint[0][0] = true;  blueprint[0][1] = true;
+                blueprint[1][0] = false; blueprint[1][1] = false;
                 break;
             case Tetrino.Type.T2:
-                _tetrino = new Tetrino2(letters, thaums, this.transform);
+                blueprint[0][0] = true;  blueprint[0][1] = false;
+                blueprint[1][0] = true;  blueprint[1][1] = false;
                 break;
             case Tetrino.Type.T3:
-                _tetrino = new Tetrino3(letters, thaums, this.transform);
+                blueprint[0][0] = true;  blueprint[0][1] = false;
+                blueprint[1][0] = false; blueprint[1][1] = true;
                 break;
             case Tetrino.Type.T4:
-                _tetrino = new Tetrino4(letters, thaums, this.transform);
+                blueprint[0][0] = false; blueprint[0][1] = true;
+                blueprint[1][0] = true;  blueprint[1][1] = false;
                 break;
             case Tetrino.Type.T5:
-                _tetrino = new Tetrino5(letters, thaums, this.transform);
+                blueprint[0][0] = true;  blueprint[0][1] = true;
+                blueprint[1][0] = true;  blueprint[1][1] = true;
                 break;
 
             default:
                 Debug.LogError("Use tetrino types 1-5.");
                 break;
         }
+
+        _tetrino.Construct(blueprint, letters, thaums);
     }
 }

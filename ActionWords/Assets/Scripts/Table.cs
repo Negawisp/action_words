@@ -13,8 +13,8 @@ public class Table : MonoBehaviour
     {
         Vector3 blockPosition = block.transform.position;
         
-        float cellWidth  = 24.9f;      // To change
-        float cellHeight = 24.9f;      // To change
+        float cellWidth  = _cells[0].GetComponent<RectTransform>().rect.width;      // To change
+        float cellHeight = _cells[0].GetComponent<RectTransform>().rect.height;      // To change
 
 
         foreach (TableCell cell in _cells)

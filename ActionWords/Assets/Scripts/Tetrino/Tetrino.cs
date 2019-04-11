@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class Tetrino : MonoBehaviour
+public class Tetrino : MonoBehaviour
 {
     public enum Type
     {
@@ -20,44 +20,82 @@ public abstract class Tetrino : MonoBehaviour
         TakeBlocks(nLetters, letters, types);
     }
     */
-    
+
+    public const int __A__ = 2;
     [SerializeField]
     private BlockPool _blockPool;
 
-    protected LetterBlock[] _blocks;
+    protected LetterBlock[][] _blocks;
     private Transform _transform;
 
 
-    public Tetrino(int nLetters, char[] letters, Thaum.Type[] types, Transform transform)
+    public void Construct(bool[][] blueprint, char[] letters, Thaum.Type[] types)
+    {
+        _blocks = TakeBlocks(blueprint, letters, types);
+        Arrange(_blocks);
+    }
+    
+
+    public void Arrange(LetterBlock[][] blueprint)
     {
         _transform = transform;
-        TakeBlocks(nLetters, letters, types);
+        
+        /*
+        if (blueprint.Length != blueprint[0].Length)
+        {
+            Debug.LogError("Blueprint should be squared.");
+            return;
+        }
+        */
+
+        int sz = blueprint.Length;
+        float inv = 1 / (float)sz;
+
+        for (int i = 0; i < sz; i++)
+        {
+            for (int j = 0; j < sz; j++)
+            {
+                if (blueprint[i][j] != null)
+                {
+                    _blocks[i][j].transform.SetParent(this.transform);
+                    RectTransform rect = blueprint[i][j].GetComponent<RectTransform>();
+                    rect.anchorMin = new Vector2(inv *  j     , inv *  i     );
+                    rect.anchorMax = new Vector2(inv * (j + 1), inv * (i + 1));
+
+                    rect.offsetMax = Vector2.zero;
+                    rect.offsetMin = Vector2.zero;
+                }
+            }
+        }
+
+        _blocks = blueprint;
     }
 
 
-    public abstract void Construct();
-
-
-    protected virtual void TakeBlocks (int nLetters, char[] letters, Thaum.Type[] types)
+    protected virtual LetterBlock[][] TakeBlocks (bool[][] blueprint, char[] letters, Thaum.Type[] types)
     {
-        if (letters.Length < nLetters)
-        { Debug.LogError("Not enough letters!"); }
-
-        if (types.Length < nLetters)
-        { Debug.LogError("Not enough thaums!!"); }
-
         _blockPool = FindObjectOfType<BlockPool>();
         if (_blockPool == null)
         { Debug.LogError("Scene didn't have a BlockPool object."); }
-        
-        _blocks = new LetterBlock[nLetters];
-        
-        for (int i = 0; i < nLetters; i++)
+
+        int n = blueprint.Length;
+        int m = blueprint[0].Length;
+        LetterBlock[][] blocks = new LetterBlock[n][];
+        for (int i = 0; i < n; i++)
         {
-            _blocks[i] = _blockPool.Get();
-            _blocks[i].transform.SetParent(_transform);
-            _blocks[i].Construct(letters[i], types[i]);
+            blocks[i] = new LetterBlock[m];
+
+            for (int j = 0; j < m; j++)
+            {
+                if (blueprint[i][j])
+                {
+                    blocks[i][j] = _blockPool.Get();
+                    blocks[i][j].Construct(letters[i], types[i]);
+                }
+            }
         }
+
+        return blocks;
     }
 
     
@@ -66,12 +104,18 @@ public abstract class Tetrino : MonoBehaviour
     {
         bool placeable = true;
 
-        foreach (LetterBlock block in _blocks)
+        foreach (LetterBlock[] blocks in _blocks)
         {
-            block.FindAimedCell();
+            foreach (LetterBlock block in blocks)
+            {
+                if (block)
+                {
+                    block.FindAimedCell();
 
-            if (!block.CanBePlaced())
-                placeable = false;
+                    if (!block.CanBePlaced())
+                        placeable = false;
+                }
+            }
         }
 
         return placeable;
@@ -79,41 +123,61 @@ public abstract class Tetrino : MonoBehaviour
 
     public void PlaceBlocks()
     {
-        foreach (LetterBlock block in _blocks)
+        foreach (LetterBlock[] blocks in _blocks)
         {
-            block.StayAtCell();
+            foreach (LetterBlock block in blocks)
+            {
+                if (block)
+                    block.StayAtCell();
+            }
         }
         FindObjectOfType<TetrinoPlayerSet>().GiveNewTetrino();
     }
-
+    
     public void Rotate(float angle)
     {
         angle = Mathf.Deg2Rad * angle;
 
         int n = _blocks.Length;
+        int m = _blocks[0].Length;
+
         for (int i = 0; i < n; i++)
         {
-            float x = _blocks[i].transform.localPosition.x;
-            float y = _blocks[i].transform.localPosition.y;
-            float z = _blocks[i].transform.localPosition.z;
+            for (int j = 0; j < m; j++)
+            {
+                if (_blocks[i][j])
+                {
+                    float x = _blocks[i][j].transform.localPosition.x;
+                    float y = _blocks[i][j].transform.localPosition.y;
+                    float z = _blocks[i][j].transform.localPosition.z;
 
-            _blocks[i].transform.localPosition = new Vector3( Mathf.Cos(angle) * x - Mathf.Sin(angle) * y, 
-                                                              Mathf.Sin(angle) * x + Mathf.Cos(angle) * y,
-                                                              z );
+                    _blocks[i][j].transform.localPosition = new Vector3(Mathf.Cos(angle) * x - Mathf.Sin(angle) * y,
+                                                                      Mathf.Sin(angle) * x + Mathf.Cos(angle) * y,
+                                                                      z);
+                }
+            }
         }
+        
     }
 
     public void SafeRotate90()
     {
         int n = _blocks.Length;
+        int m = _blocks[0].Length;
         for (int i = 0; i < n; i++)
         {
-            _blocks[i].ResetLocalPosition();
-            float x = _blocks[i].transform.localPosition.x;
-            float y = _blocks[i].transform.localPosition.y;
-            float z = _blocks[i].transform.localPosition.z;
+            for (int j = 0; j < m; j++)
+            {
+                if (_blocks[i][j])
+                {
+                    _blocks[i][j].ResetLocalPosition();
+                    float x = _blocks[i][j].transform.localPosition.x;
+                    float y = _blocks[i][j].transform.localPosition.y;
+                    float z = _blocks[i][j].transform.localPosition.z;
 
-            _blocks[i].transform.localPosition = new Vector3(-y, x, z);
+                    _blocks[i][j].transform.localPosition = new Vector3(-y, x, z);
+                }
+            }
         }
         RememberPosition();
     }
@@ -121,9 +185,16 @@ public abstract class Tetrino : MonoBehaviour
     public void RememberPosition()
     {
         int n = _blocks.Length;
+        int m = _blocks[0].Length;
         for (int i = 0; i < n; i++)
         {
-            _blocks[i].RememberLocalPosition();
+            for (int j = 0; j < m; j++)
+            {
+                if (_blocks[i][j])
+                    _blocks[i][j].RememberLocalPosition();
+            }
         }
     }
+
+    
 }
